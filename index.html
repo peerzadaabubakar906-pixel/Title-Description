@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Title & Description Generator</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #0F1418;
+    color: #E8ECEE;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 60px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(135deg, #4FD1C5, #2C9C8F);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-weight: 900; color: #0F1418; font-size: 16px;
+  }
+  .title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+  .subtitle { font-size: 12.5px; color: #7C8991; }
+  button.settings-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: transparent; border: 1px solid #2A333A; color: #B7C0C6;
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+  }
+  .panel {
+    background: #161C21; border: 1px solid #262F36; border-radius: 12px;
+    padding: 18px; margin-bottom: 22px; display: none;
+  }
+  .panel.open { display: block; }
+  .panel-title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+  .panel-desc { font-size: 12.5px; color: #7C8991; margin-bottom: 10px; line-height: 1.5; }
+  textarea {
+    width: 100%; background: #0F1418; border: 1px solid #2A333A; border-radius: 8px;
+    color: #E8ECEE; padding: 12px; font-size: 13px; line-height: 1.6;
+    resize: vertical; font-family: inherit;
+  }
+  textarea:focus { outline: none; border-color: #4FD1C5; }
+  .save-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+  .save-btn {
+    background: #4FD1C5; color: #0F1418; border: none; border-radius: 8px;
+    padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .save-btn.saved { background: #2C9C8F; }
+  label { font-size: 13px; color: #B7C0C6; display: block; margin-bottom: 8px; }
+  #transcript { width: 100%; font-size: 14px; margin-bottom: 14px; }
+  .error {
+    background: rgba(220,90,90,0.12); border: 1px solid rgba(220,90,90,0.3);
+    color: #E8A0A0; border-radius: 8px; padding: 10px 12px; font-size: 13px;
+    margin-bottom: 14px; display: none;
+  }
+  .error.show { display: block; }
+  .generate-btn {
+    width: 100%; background: #4FD1C5; color: #0F1418; border: none;
+    border-radius: 10px; padding: 13px 16px; font-size: 14.5px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin-bottom: 24px;
+  }
+  .generate-btn:disabled { background: #2A333A; color: #7C8991; cursor: default; }
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .result-card {
+    background: #161C21; border: 1px solid #262F36; border-radius: 10px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .result-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .result-label { font-size: 11.5px; color: #7C8991; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; }
+  .copy-btn { background: transparent; border: none; color: #7C8991; cursor: pointer; font-size: 12px; }
+  .copy-btn.copied { color: #4FD1C5; }
+  .result-value { font-size: 15px; font-weight: 600; line-height: 1.6; white-space: pre-wrap; }
+  .result-value.multiline { font-size: 13.5px; font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div>
+        <div class="title">Title & Description Generator</div>
+        <div class="subtitle">Transcript daalein, AI baaqi kaam kare</div>
+      </div>
+    </div>
+    <button class="settings-btn" id="settingsToggle">⚙ Instructions</button>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="panel-title">Saved Instructions</div>
+    <div class="panel-desc">Ye instruction ek dafa save hongi (aapke browser mein) aur har transcript par apply hongi.</div>
+    <textarea id="instructions" rows="7"></textarea>
+    <div class="save-row">
+      <button class="save-btn" id="saveBtn">Save Instructions</button>
+    </div>
+  </div>
+
+  <label for="transcript">Transcript paste karein</label>
+  <textarea id="transcript" rows="10" placeholder="Yahan apna transcript paste karein..."></textarea>
+
+  <div class="error" id="errorBox"></div>
+
+  <button class="generate-btn" id="generateBtn">
+    <span id="btnText">✦ Title & Description Nikalein</span>
+  </button>
+
+  <div id="results"></div>
+</div>
+
+<script>
+const DEFAULT_INSTRUCTIONS = `Aap ek expert YouTube content strategist hain. Diye gaye transcript ko parh kar aik click-worthy lekin accurate TITLE aur aik SEO-friendly DESCRIPTION generate karein.
+
+Rules:
+- Title 60 characters se kam ho, curiosity paida kare, clickbait na ho
+- Description 2-3 paragraphs ki ho, keywords naturally shamil hon, end mein 5 relevant hashtags dein
+- Zaban wahi rakhein jo transcript mein hai (Urdu/English/Roman Urdu mix)`;
+
+const panel = document.getElementById('panel');
+const settingsToggle = document.getElementById('settingsToggle');
+const instructionsBox = document.getElementById('instructions');
+const saveBtn = document.getElementById('saveBtn');
+const transcriptBox = document.getElementById('transcript');
+const generateBtn = document.getElementById('generateBtn');
+const btnText = document.getElementById('btnText');
+const errorBox = document.getElementById('errorBox');
+const results = document.getElementById('results');
+
+let savedInstructions = localStorage.getItem('saved_instructions');
+if (!savedInstructions) {
+  instructionsBox.value = DEFAULT_INSTRUCTIONS;
+  panel.classList.add('open');
+} else {
+  instructionsBox.value = savedInstructions;
+}
+
+settingsToggle.addEventListener('click', () => panel.classList.toggle('open'));
+
+saveBtn.addEventListener('click', () => {
+  const val = instructionsBox.value.trim();
+  if (!val) return;
+  localStorage.setItem('saved_instructions', val);
+  savedInstructions = val;
+  saveBtn.textContent = 'Saved ✓';
+  saveBtn.classList.add('saved');
+  setTimeout(() => {
+    saveBtn.textContent = 'Save Instructions';
+    saveBtn.classList.remove('saved');
+    panel.classList.remove('open');
+  }, 1200);
+});
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+}
+function hideError() {
+  errorBox.classList.remove('show');
+}
+
+function copyText(text, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  const original = btn.textContent;
+  btn.textContent = 'Copied ✓';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1200);
+}
+
+function renderResult(title, description) {
+  results.innerHTML = '';
+
+  const titleCard = document.createElement('div');
+  titleCard.className = 'result-card';
+  titleCard.innerHTML = `
+    <div class="result-head">
+      <div class="result-label">Title</div>
+      <button class="copy-btn">Copy</button>
+    </div>
+    <div class="result-value"></div>
+  `;
+  titleCard.querySelector('.result-value').textContent = title;
+  titleCard.querySelector('.copy-btn').addEventListener('click', (e) => copyText(title, e.target));
+  results.appendChild(titleCard);
+
+  const descCard = document.createElement('div');
+  descCard.className = 'result-card';
+  descCard.innerHTML = `
+    <div class="result-head">
+      <div class="result-label">Description</div>
+      <button class="copy-btn">Copy</button>
+    </div>
+    <div class="result-value multiline"></div>
+  `;
+  descCard.querySelector('.result-value').textContent = description;
+  descCard.querySelector('.copy-btn').addEventListener('click', (e) => copyText(description, e.target));
+  results.appendChild(descCard);
+}
+
+generateBtn.addEventListener('click', async () => {
+  hideError();
+  results.innerHTML = '';
+  const transcript = transcriptBox.value.trim();
+  if (!transcript) {
+    showError('Pehle transcript paste karein.');
+    return;
+  }
+  if (!savedInstructions) {
+    showError('Pehle apni instructions save karein (upar Instructions mein).');
+    panel.classList.add('open');
+    return;
+  }
+
+  generateBtn.disabled = true;
+  btnText.innerHTML = '<span class="spin">↻</span> Generate ho raha hai...';
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instructions: savedInstructions, transcript })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    renderResult(data.title, data.description);
+  } catch (e) {
+    showError('Kuch masla ho gaya. Dobara koshish karein.');
+  } finally {
+    generateBtn.disabled = false;
+    btnText.textContent = '✦ Title & Description Nikalein';
+  }
+});
+</script>
+</body>
+</html>
